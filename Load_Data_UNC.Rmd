@@ -1,0 +1,45 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+{
+  library(tidyverse)
+  library(janitor)
+  library(readxl)
+  
+  select <- dplyr::select
+  std_error <- function(x) sd(x)/sqrt(length(x))
+  
+}
+
+# Load metadata
+metadata <- read.delim('MicrobiomeAnalyst_metadata_diet.tsv',sep = '\t') %>% 
+  clean_names() 
+metadata
+
+# Load rarefied table
+orig_table <- read_tsv('rarefied-feature-table_taxa.tsv',skip = 1) %>% 
+  rename(featureid = `#OTU ID`)
+# Pull all samples, remove taxa column
+table <- orig_table %>% 
+  select(featureid, any_of(metadata$sample_id))
+
+
+# Load and pull taxa. fill down taxa to prevent NA
+taxonomy <- orig_table %>% 
+  select(featureid, Taxon) %>% 
+  separate(Taxon, 
+           into = c("Kingdom", "Phylum", "Class", "Order", "Family", "Genus","Species"), 
+           sep = '; ') %>% 
+  pivot_longer(-featureid, names_to = 'level', values_to = 'taxon') %>% 
+  group_by(featureid) %>% 
+  fill(taxon) %>% 
+  mutate(taxon = str_sub(taxon, 4, nchar(taxon)))
+
+#taxonomy
+```
+
+
+
