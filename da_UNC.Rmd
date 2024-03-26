@@ -1,0 +1,98 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+```{r}
+# Load necessary libraries
+{
+
+library(phyloseq)         # For working with microbiome data
+library(microbiomeMarker) 
+library(ANCOMBC)         
+library(beepr)            
+}
+```
+
+```{r}
+# Process taxonomy table
+tax_table <- taxonomy %>% 
+  mutate(taxon = str_replace_all(taxon, '\\.', ' ')) %>%  # Replace '.' with space in taxon names
+  pivot_wider(names_from = 'level', values_from = 'taxon') %>%  # Pivot taxonomy table wider
+  filter(Kingdom == 'Bacteria') %>%  # Filter only Bacteria
+  mutate(Genus = paste(Kingdom, Phylum, Class, Order, Family,Genus, sep = '.')) %>%  # Create Family column
+  mutate(Phylum = paste(Kingdom, Phylum, sep = '.')) %>%  # Create Phylum column
+  column_to_rownames(var = 'featureid') %>%  # Set featureid as rownames
+  as.matrix()  # Convert to matrix
+```
+
+```{r}
+# Process ASV table
+asv_table <- table %>% 
+  column_to_rownames(var = 'featureid') %>%  # Set featureid as rownames
+  as.matrix()  # Convert to matrix
+```
+
+
+```{r}
+# Process sample metadata
+sample_metadata <- metadata %>%  # 
+  column_to_rownames(var='sample_id') %>%  # Set sampleid as rownames
+  as.data.frame()  # Convert to data frame
+```
+
+
+```{r}
+# Create phyloseq object
+ASV <- otu_table(asv_table, taxa_are_rows = TRUE)
+TAX <- tax_table(tax_table)
+METADATA <- sample_data(sample_metadata) 
+physeq <- phyloseq(ASV, TAX, METADATA)
+```
+
+```{r}
+# Subset phyloseq object based on conditions
+phyloseq_g0 <- subset_samples(physeq, g0_g1 == 'G0')
+phyloseq_g1 <- subset_samples(physeq, g0_g1 == 'G1')
+```
+
+```{r}
+# Perform ANCOM-BC analysis for GM Low samples at Family level
+gm1_family_out = ancombc2(
+  data = phyloseq_g0, 
+  fix_formula = 'sex + diet',
+  p_adj_method = "BH", 
+  alpha = 0.05, 
+  tax_level = "Genus",
+  lib_cut = 0,
+  group = 'diet',
+  struc_zero = TRUE,
+  assay_name = 'counts', 
+  pseudo_sens = TRUE,
+  verbose = FALSE,
+  global = T,
+  pairwise = T
+)
+```
+
+
+```{r}
+# Perform ANCOM-BC analysis for G1
+gm1_family_out = ancombc2(
+  data = phyloseq_g1, 
+  fix_formula = 'sex + diet',
+  p_adj_method = "BH", 
+  alpha = 0.05, 
+  tax_level = "Genus",
+  lib_cut = 0,
+  group = 'diet',
+  struc_zero = TRUE,
+  assay_name = 'counts', 
+  pseudo_sens = TRUE,
+  verbose = FALSE,
+  global = T,
+  pairwise = T
+)
+```
+
+`
+
